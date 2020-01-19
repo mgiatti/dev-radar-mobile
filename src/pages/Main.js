@@ -4,7 +4,7 @@ import MapView, { Marker, Callout } from 'react-native-maps';
 import { requestPermissionsAsync, getCurrentPositionAsync } from 'expo-location';
 import { MaterialIcons} from '@expo/vector-icons';
 import api from '../services/api';
-
+import { connect , disconnect, subscribeToNewDevs } from '../services/socket';
 function Main({ navigation }) {
     [currentRegion, setCurrentRegion] = useState(null);
     [devs, setDevs] = useState([]);
@@ -27,16 +27,28 @@ function Main({ navigation }) {
             }
         }
 
+
+
         loadInitialPosition();
     },[]);
 
+    useEffect(() => {
+        subscribeToNewDevs(dev => setDevs([...devs, dev]));
+    },[devs])
+
+    function setupWebsocket(){
+        disconnect();
+
+        const { longitude, latitude } = currentRegion;
+
+        connect({ longitude, latitude, techs });
+    }
+
     function handleRegionChanged(region){
-        console.log(region);
         setCurrentRegion(region);
     }
 
     async function loadDevs(){
-        console.log("calling loadDevs");
         const { latitude, longitude } = currentRegion;
         const response = await api.get('/search',{
             params: {
@@ -45,12 +57,9 @@ function Main({ navigation }) {
                 techs
             }
         });
-        console.log(response.data);
         setDevs(response.data.devs);
-    }
-
-    function calloutPressed(){
-        navigation.navigate("Profile", { github_username : 'mgiatti' });
+        console.log(devs);
+        setupWebsocket();
     }
 
     if(!currentRegion){
@@ -93,7 +102,7 @@ function Main({ navigation }) {
             autoCorrect={false}
             />
             <TouchableOpacity onPress={loadDevs} style={styles.loadButton}>
-                <MaterialIcons name="map-search" size={20} color="#FFF"></MaterialIcons>
+                <MaterialIcons name="search" size={20} color="#FFF"></MaterialIcons>
             </TouchableOpacity>
             
         </View>
